@@ -1,0 +1,90 @@
+@@ -0,0 +1,89 @@
+package com.leonia.pms.controller;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.validation.Valid;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.propertyeditors.CustomDateEditor;
+import org.springframework.stereotype.Controller;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.InitBinder;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.ModelAndView;
+
+import com.leonia.pms.dto.Reservation;
+import com.leonia.pms.dto.ReservationAdvance;
+import com.leonia.pms.dto.ReservationCancel;
+import com.leonia.pms.dto.RoomMaster;
+import com.leonia.pms.service.IAmendmentsService;
+import com.leonia.pms.service.ICancelService;
+import com.leonia.pms.service.IReservationService;
+import com.leonia.pms.serviceimpl.AmendmentSearchServiceImpl;
+
+@Controller
+public class ReservationController {
+	@Autowired
+	public IReservationService reservationService;
+	@Autowired
+	private IAmendmentsService dataService;
+	@Autowired
+    public ICancelService iCancelService;
+	
+	@Autowired
+	private AmendmentSearchServiceImpl amendmentSearchServiceImpl;
+
+	@InitBinder
+	public void initBinder(WebDataBinder binder ) {
+		SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy");
+		binder.registerCustomEditor(Date.class, "arrivaldate", new CustomDateEditor(dateFormat, false));
+		binder.registerCustomEditor(Date.class, "departdate", new CustomDateEditor(dateFormat, false));
+	}
+	@RequestMapping(value = "/reservation_submit",method = RequestMethod.POST)
+	public String setReservations(@ModelAttribute("reservation") @Valid Reservation reservation,BindingResult result){
+		reservationService.saveReservation(reservation);
+		return "success";
+	}
+	@RequestMapping(value = "/reservation_advance_payment",method=RequestMethod.GET)
+	public ModelAndView getReservationAdvancePaymentPage() {
+		List<Reservation> reservationList=dataService.getReservation();
+		return new ModelAndView("reservation_advance_payment","reservationList",reservationList);
+		
+	}
+	@RequestMapping(value="/reservation_advance_details",method=RequestMethod.GET)
+	public String getCancelDetails(Map<String,Object> model, @ModelAttribute("cancel") ReservationCancel cancel, HttpServletRequest request, HttpServletResponse response){
+		String reservation_id=request.getParameter("val");
+		List<Reservation> reservationList=iCancelService.getCancelDetails(reservation_id);
+		model.put("reservationList", reservationList);
+		return "reservation_advance_details";
+	}
+	
+	@RequestMapping(value = "/submit_resevation_advance",method = RequestMethod.POST)
+	public String saveReservationAdvancePay(@ModelAttribute ReservationAdvance resAdvance, HttpServletRequest request, BindingResult result, Map<String,Object> model){
+		   
+		//reservationService.saveReservationAdvancePay(resAdvance);
+		//List<Reservation> reservationList=dataService.getReservation();
+		return "reservation_advance_payment"; 
+	}
+	
+	@RequestMapping(value = "/popup_no_of_room")
+	public ModelAndView getNoOfRooms(){
+		return new ModelAndView("popup_no_of_room");		
+	}
+
+	@RequestMapping(value = "/popup_room_no",method = RequestMethod.GET)
+	public ModelAndView getRoomNo(HttpServletRequest request, HttpServletResponse response){
+		String room_type_description = request.getParameter("val");
+         List<RoomMaster> rooms = reservationService.getRoomNo(room_type_description);
+     return new ModelAndView("popup_room_no","rooms",rooms);	
+	}
+	   
+}
