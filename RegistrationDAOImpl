@@ -1,0 +1,393 @@
+@@ -0,0 +1,391 @@
+package com.leonia.pms.daoimpl;
+
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.StringTokenizer;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.hibernate.Criteria;
+import org.hibernate.FetchMode;
+import org.hibernate.Query;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
+import org.hibernate.criterion.Disjunction;
+import org.hibernate.criterion.MatchMode;
+import org.hibernate.criterion.Restrictions;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import com.leonia.pms.dao.IRegistartionDAO;
+import com.leonia.pms.dto.GuestDetails;
+import com.leonia.pms.dto.RateCode;
+import com.leonia.pms.dto.RegistartionDrop;
+import com.leonia.pms.dto.RegistartionPassportVisa;
+import com.leonia.pms.dto.Registration;
+import com.leonia.pms.dto.RegistrationGuestDetails;
+import com.leonia.pms.dto.RegistrationRates;
+import com.leonia.pms.dto.Reservation;
+import com.leonia.pms.dto.ReservationRoom;
+import com.leonia.pms.dto.RoomMaster;
+import com.leonia.pms.dto.RoomType;
+
+@SuppressWarnings("all")
+@Repository
+public class RegistrationDAOImpl implements IRegistartionDAO {
+
+	@Autowired
+	private SessionFactory sessionFactory;
+	
+	@Override
+	public List<RegistrationRates> fetchRegistrationRates(String selectedRates, String mode)
+	{
+		List<RegistrationRates> fetchedList = new ArrayList<RegistrationRates>();
+		StringTokenizer st = new StringTokenizer(selectedRates);
+		int commas = 0;
+		for(int j = 0; j < selectedRates.length(); j++)
+		{
+			if(selectedRates.charAt(j) == ',')
+			commas++;
+		}
+		String[] getValues=new String[commas+1];
+		int i=0,y=0;
+		while (st.hasMoreTokens())
+		{ 
+			getValues[i]=st.nextToken(",");
+			i++;
+		}
+		for(int x = 0; x < (getValues.length)/4; x++)
+		{
+			RegistrationRates registrationRates = new RegistrationRates();
+			registrationRates.setStayingDates(getValues[y]);
+			registrationRates.setPlan(getValues[++y]);
+			RateCode ratecode=new RateCode();
+			ratecode.setRate_code_id(getValues[++y]);
+			registrationRates.setRateCode(ratecode);
+			registrationRates.setRegistrationRateDiscount(Double.parseDouble(getValues[++y]));
+			registrationRates.setModeOfDiscount(mode);
+			fetchedList.add(registrationRates);
+			y++;
+		}
+	return fetchedList;
+	}
+	
+	@Override
+	public String saveRegistration(Registration registration, RegistrationGuestDetails registrationguest)
+	{
+		Session session = sessionFactory.openSession();
+		session.beginTransaction();
+		String reg_id=null;
+		try
+		{
+			for(RegistrationRates registrationRates : registration.getRegistrationRates())
+			{
+				registrationRates.setRegistration_type("Walk-In");
+				registrationRates.setRegistration(registration);
+			}
+			registration.getRegistrationGuestDetails().setRegistration(registration);
+			registration.getRegistrationGuestDetails().getRegistrationPassportVisa().setRegistrationGuestDetails(registration.getRegistrationGuestDetails());
+			registration.getRegistrationGuestDetails().getRegistrationDrop().setRegistrationGuestDetails(registration.getRegistrationGuestDetails());
+			session.save(registration);
+			int reg_id1=registration.getRegistration_id();
+			reg_id=String.valueOf(reg_id1);
+			session.getTransaction().commit();
+		}
+		catch(Exception ex)
+		{
+			try {
+				ex.printStackTrace(new PrintWriter("Records Not Saved"));
+			}
+			catch (FileNotFoundException e) {
+					e.printStackTrace();
+			}
+		}
+		
+		System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"+reg_id);
+		return reg_id;
+	}
+	
+	@Override
+	public List<Registration> getRegistrationList(Registration registration) {
+		Session sessionObj = sessionFactory.openSession();
+		sessionObj.beginTransaction();
+		Criteria crit = sessionObj.createCriteria(Registration.class,"registration");
+		if(!registration.getName().equals(""))
+		{	
+			Disjunction disJun = Restrictions.disjunction();
+			disJun.add(Restrictions.ilike("registration.guestFirstName", registration.getName(),MatchMode.ANYWHERE));
+			disJun.add(Restrictions.ilike("registration.guestMiddleName", registration.getName(), MatchMode.ANYWHERE));
+			disJun.add(Restrictions.ilike("registration.guestLastName", registration.getName(), MatchMode.ANYWHERE));
+			crit.add(disJun);
+		}
+		if(registration.getRegistration_id() != null) 
+		{
+			crit.add(Restrictions.eq("registration.registration_id", registration.getRegistration_id()));
+		}
+		if(registration.getCorporate_name() != null)
+		{
+			crit.add(Restrictions.ilike("registration.corporate_name", registration.getCorporate_name(),MatchMode.ANYWHERE));
+		}
+		if(registration.getDepartdate() == null || registration.getArrivaldate() == null)
+		{
+			if(registration.getDepartdate() != null) 
+			{
+				crit.add(Restrictions.eq("registration.departdate", registration.getDepartdate()));
+			}
+			if(registration.getArrivaldate() != null) 
+			{
+				crit.add(Restrictions.eq("registration.arrivaldate", registration.getArrivaldate()));
+			}
+		}
+		List<Registration> searchedList = crit.list();
+		for(Registration registration1: searchedList)
+		{
+			registration1.setName(registration1.getGuestFirstName()+" "+registration1.getGuestMiddleName()+" "+registration1.getGuestLastName());
+		}
+	return searchedList;
+	}
+	
+	@Override
+	public List<Registration> modifyRegistrationPage(String registrationId)
+	{
+		List<Registration> registrationList = sessionFactory.openSession().createQuery("FROM Registration where registration_id = '"+registrationId+"'").list();
+	return registrationList;
+	}
+	
+	@Override
+	public String  updateRegistartion(Registration registration,String reg,String greg ) {
+		
+		Session session = sessionFactory.openSession();
+		session.beginTransaction();
+		String reg_id=null;
+		
+		int registrationid=Integer.parseInt(reg);
+		int guest=Integer.parseInt(greg);
+		registration.setRegistration_id(registrationid);
+		registration.getRegistrationGuestDetails().setRegistration(registration);
+		registration.getRegistrationGuestDetails().getRegistrationPassportVisa().setRegistrationGuestDetails(registration.getRegistrationGuestDetails());
+		registration.getRegistrationGuestDetails().getRegistrationDrop().setRegistrationGuestDetails(registration.getRegistrationGuestDetails());
+		int reg_id1=registration.getRegistration_id();
+		reg_id=String.valueOf(reg_id1);
+	    session.update(registration);
+	    session.getTransaction().commit();
+	    return reg_id;
+	}
+	
+	// CheckInDao Implementation
+	
+	@Override
+	public List<ReservationRoom> getCheckIn(String arrivaldate) {
+		Session session=sessionFactory.openSession();
+		Transaction tx=session.beginTransaction();
+		String reportDate1=arrivaldate;
+		@SuppressWarnings("unchecked")
+		List<ReservationRoom> reservationRoom=session.createQuery("from ReservationRoom where arrivaldate='"+reportDate1+"'").list();
+		tx.commit();
+        session.close();	
+		return reservationRoom;
+	}
+	
+	@Override
+	public List<ReservationRoom> getCheckInToday(String arrivaldate) {
+		Session session=sessionFactory.openSession();
+		Transaction tx=session.beginTransaction();
+		String reportDate1=arrivaldate;
+		@SuppressWarnings("unchecked")
+		List<ReservationRoom> reservationRoom=session.createQuery("from ReservationRoom where arrivaldate='"+reportDate1+"'").list();
+		tx.commit();
+        session.close();	
+		return reservationRoom;
+	}
+
+	@Override
+	public List<ReservationRoom> getCheckInNext(String arrivaldate) {
+		Session session=sessionFactory.openSession();
+		Transaction tx=session.beginTransaction();
+		String reportDate1=arrivaldate;
+		@SuppressWarnings("unchecked")
+		List<ReservationRoom> reservationRoom=session.createQuery("from ReservationRoom where arrivaldate='"+reportDate1+"'").list();
+		tx.commit();
+        session.close();	
+		return reservationRoom;
+	}
+	
+	@Override
+	public  List<List<Object>>  getReservationRoom(String val) {
+		
+		List<List<Object>> returnMap= new ArrayList<List<Object>>();
+		Session session=sessionFactory.openSession();
+		Transaction tx=session.beginTransaction();
+		int valint=Integer.parseInt(val);
+		
+		@SuppressWarnings("unchecked")
+		List<Object> reservation=session.createQuery("from Reservation where reservation_id="+valint).list();
+	    List<Object> reservationRoom=session.createQuery("from ReservationRoom where reservation.reservation_id="+valint).list();
+		List<Object> guesdetails=session.createQuery("from GuestDetails where reservation.reservation_id="+valint).list();
+		List<Object> reservationRatesDetails=session.createQuery("from ReservationRatesDetails where reservation.reservation_id="+valint).list();
+
+		returnMap.add(reservation);
+		returnMap.add(reservationRoom);
+		returnMap.add(guesdetails);
+		returnMap.add(reservationRatesDetails);
+		
+		
+		tx.commit();
+        session.close();	
+		return returnMap;
+	}
+	
+	@Override
+	public Object saveRegistrationCheckin(Registration obj,String reservationroomid,String reservGuesId) {
+		// TODO Auto-generated method stub
+		Session session = sessionFactory.openSession();
+		Transaction tx=	session.beginTransaction();
+		String room=null;
+		String regID = null;
+		String fname=null;
+		int reservationroomid1=Integer.parseInt(reservationroomid);
+		int reservGuesId1=Integer.parseInt(reservGuesId);
+		System.out.println("reservation GuestDetatils is "+reservGuesId1);
+		
+		try {
+			 String registrtion_type=obj.getRegistration_type();
+			 int registrtion_type_id=obj.getRegistration_type_id();
+			 room=obj.getRoom_no();
+			 fname=obj.getGuestFirstName();
+			 System.out.println(fname);
+			for(RegistrationRates registrationRates : obj.getRegistrationRates()) {
+				registrationRates.setRegistration(obj);
+				registrationRates.setRegistration_type(registrtion_type);
+				registrationRates.setRegistration_type_id(registrtion_type_id);
+			}
+			
+			
+			obj.getRegistrationGuestDetails().setRegistration(obj);
+			obj.getRegistrationGuestDetails().getRegistrationPassportVisa().setRegistrationGuestDetails(obj.getRegistrationGuestDetails());
+			obj.getRegistrationGuestDetails().getRegistrationDrop().setRegistrationGuestDetails(obj.getRegistrationGuestDetails());
+			// set guesdetails abo
+		    // obj.getRegistrationGuestDetails().setRegistration(obj);
+			/*RegistrationGuestDetails res1=obj.getRegistrationGuestDetails();
+			RegistartionDrop rdrop=res1.getRegistrationDrop();
+			rdrop.setRegistrationGuestDetails(res1);
+			RegistartionPassportVisa rpass=res1.getRegistrationPassportVisa();
+			rpass.setRegistrationGuestDetails(res1);
+  		    res1.setRegistration(obj);*/
+			    
+			
+			
+			
+			
+			session.save(obj);
+			Query qry = session.createQuery("update RoomMaster set room_status='Occipied&Clean' where room_no='"+room+"'");
+		    int res = qry.executeUpdate();
+		    System.out.println("result is ^^^^^^^^^^^^^^"+res);
+		    int rid = obj.getRegistration_id();
+			regID = String.valueOf(rid);
+			Query qry1 = session.createQuery("update ReservationRoom set status='show' where reservation_room_id='"+reservationroomid1+"'");
+		    int res2 = qry1.executeUpdate();
+		    System.out.println("result is ^^^^^^^^^^^^^^"+res2);
+			Query qry2 = session.createQuery("update GuestDetails set status='show',room_no='"+room+"',guestFirstName='"+fname+"' where guestDetailsId='"+reservGuesId1+"'");
+		    int res3 = qry2.executeUpdate();
+		        System.out.println("result is ^^^^^^^^^^^^^^"+res3);
+			tx.commit();
+		 	session.close();
+			
+			
+
+			//return aList;
+			} catch(Exception ex) {
+				try {
+					ex.printStackTrace(new PrintWriter("Records Not Saved"));
+				} catch (FileNotFoundException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		
+		return regID;
+	}
+	
+	
+	@Override
+	public List<RoomType> checkinPopup(String unit) {
+		// TODO Auto-generated method stub
+		List<RoomType> roomTypeList = sessionFactory.openSession().createQuery(" FROM RoomType where building_id = '"+unit+"'").list();
+		return roomTypeList;
+	}
+
+	@Override
+	public List<RoomMaster> checkInpopupSelectRoom(String rooms) {
+		// TODO Auto-generated method stub
+		String room_type_id=null;
+		String query="select room_type_id, room_type_description from RoomType where room_type_description='"+rooms+"'";
+		List<RoomType> room_type=sessionFactory.openSession().createQuery(query).list();
+			Iterator ie = room_type.iterator();
+		    while(ie.hasNext()){
+		      	ArrayList<Integer> roompositionlist=new ArrayList<Integer>();
+	            Object room_type1[]=(Object[])ie.next();
+	          	room_type_id=(String)room_type1[0];
+	          	String room_type_description=(String)room_type1[1];
+	            }
+		List<RoomMaster> roomList = sessionFactory.openSession().createQuery(" FROM RoomMaster where room_type_id = '"+room_type_id+"'").list();   // and room_status='VacantClean' 
+		return roomList;
+		
+	}
+
+/*	@Override
+	public List<GuestDetails> checkInpopupGuestDetails(String guestid) {
+		// TODO Auto-generated method stub
+		List<GuestDetails> GuestDetatilsList = sessionFactory.openSession().createQuery(" FROM GuestDetails where guestDetailsId = '"+guestid+"'").list();
+		return GuestDetatilsList;
+	}
+*/
+	
+	
+	@Override
+	public List<GuestDetails> checkInpopupGuestDetails(String guestid) {
+		int valint=Integer.parseInt(guestid);
+		Session session=sessionFactory.openSession();
+		Transaction tx=session.beginTransaction();
+		Criteria crit = session.createCriteria(GuestDetails.class);
+		crit.setFetchMode("pickupDrop", FetchMode.JOIN);
+		crit.add(Restrictions.idEq(valint));
+		List<GuestDetails> guestDetails = crit.list();
+		tx.commit();
+		        session.close();
+		return guestDetails;
+	}
+
+	
+	@Override
+	public List<List<Object>> CheckInRegistrationCard(String regid) {
+		// TODO Auto-generated method stub
+		List<List<Object>> regicard= new ArrayList<List<Object>>();
+		Session session=sessionFactory.openSession();
+		Transaction tx=session.beginTransaction();
+		int regid1=Integer.parseInt(regid);
+		
+		@SuppressWarnings("unchecked")
+		List<Object> registration=session.createQuery("from Registration where registration_id="+regid1).list();
+	    List<Object> regiguesdetails=session.createQuery("from RegistrationGuestDetails where registration.registration_id="+regid1).list();
+		
+
+	    regicard.add(registration);
+	    regicard.add(regiguesdetails);
+		
+		
+		
+		tx.commit();
+        session.close();	
+		return regicard;
+	}
+
+	
+	//End CheckIndao implenetation
+}
+\ No newline at end of file
