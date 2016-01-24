@@ -1,0 +1,122 @@
+@@ -0,0 +1,153 @@
+package com.leonia.pms.controller;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.StringTokenizer;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.servlet.ModelAndView;
+
+import com.leonia.pms.dto.Amenities;
+import com.leonia.pms.dto.GuestAmenitiesList;
+import com.leonia.pms.dto.Registration;
+import com.leonia.pms.service.IGuestAmenitiesListService;
+
+@Controller
+public class GuestAmenitiesListController {
+	
+	@Autowired
+	private IGuestAmenitiesListService iGuestAmenitiesListService;
+
+	@RequestMapping(value = "/GuestAmenitiesList")
+	public String getregistrationList() {
+		return "GuestAmenitiesList";
+
+	}
+	
+	@RequestMapping("/popupRegistrationListInfo")
+	public String getPopupRegistrationListInfo(Map<String,Object> model,@ModelAttribute("registration") Registration registration,BindingResult result, HttpServletRequest request, HttpServletResponse response) {
+		List<Registration> registrationList =	iGuestAmenitiesListService.getPopupRegistrationInfo();
+		model.put("registrationList", registrationList);
+		return "popup_registration";
+	}
+	
+	
+	@RequestMapping("/popupAmenitiesListInfo")
+	public String getPopupAmenitiesListInfo(Map<String,Object> model,@ModelAttribute("amenities") Amenities amenities,BindingResult result, HttpServletRequest request, HttpServletResponse response) {
+		List<Amenities> amenitiesList =	iGuestAmenitiesListService.getPopupAmenitiesInfo();
+		model.put("amenitiesList", amenitiesList);
+		return "popup_amenities";
+	}
+	
+	
+	@RequestMapping("/calculateAmenities")
+	public ModelAndView getSelectedAmenities(HttpServletRequest request, HttpServletResponse response){
+		String getdetails = request.getParameter("val");
+		StringTokenizer st = new StringTokenizer(getdetails); 
+		int commas = 0;
+		   for(int j = 0; j < getdetails.length(); j++) {
+		       if(getdetails.charAt(j) == ',')
+		    	  commas++;
+		   }
+		   String[] getValues=new String[commas+1];
+		   int i=0;
+		     while (st.hasMoreTokens()) {  
+		         getValues[i]=st.nextToken(",");
+		         i++;
+		     }
+		     
+		  Map<String,List> discountMap=new HashMap<String,List>();
+		
+		
+		Map<Integer, Object> ratecodes=iGuestAmenitiesListService.calculateAmenities(getdetails);
+     return new ModelAndView("calculaterates","rates",ratecodes);	
+	}
+	
+	
+	
+	
+	
+	@RequestMapping("/checkedamenities")
+	public ModelAndView checkedamenitiesList(HttpServletRequest request){
+		String val=request.getParameter("val");
+		String val2=request.getParameter("val2");
+		Map<String,List> map=new HashMap<String,List>(); 
+		Map<String,List> getDetails=iGuestAmenitiesListService.checkedamenitiesList(val,val2);
+		
+		return new ModelAndView("checkedamenities","getDetails",getDetails);
+	}
+	
+	
+	/*@RequestMapping("/checkedamenities")
+	public ModelAndView checkedamenitiesList(HttpServletRequest request){
+		String val=request.getParameter("val");
+		String val2=request.getParameter("val2");
+		List<List<Object>> map=new ArrayList<List<Object>>(); 
+		
+		List<List<Object>> getDetails=iGuestAmenitiesListService.checkedamenitiesList(val,val2);
+		
+		return new ModelAndView("checkedamenities","getDetails",getDetails);
+	}*/
+	
+	@RequestMapping("/saveamenities")
+	public ModelAndView saveamenities(HttpServletRequest request){
+		String[] arr=request.getParameterValues("text");
+		String id = request.getParameter("id");
+		int k=0;
+		 for(int i=0;i<arr.length/4;i++){
+			 GuestAmenitiesList ge = new GuestAmenitiesList();
+			 	ge.setRegistration_id(id);
+	        	ge.setAmenities_charge(arr[k]);
+	        	ge.setAmount(arr[++k]);
+	        	ge.setAmenities_name(arr[++k]);
+	        	ge.setQuantity(arr[++k]);
+	        	++k;
+	        	iGuestAmenitiesListService.saveguestamenitieslist(ge);
+		 }
+		 return new ModelAndView("GuestAmenitiesList");
+	}
+	
+
+}
