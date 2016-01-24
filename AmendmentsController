@@ -1,0 +1,120 @@
+@@ -0,0 +1,119 @@
+package com.leonia.pms.controller;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.ServletContext;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import javax.validation.Valid;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.propertyeditors.CustomDateEditor;
+import org.springframework.stereotype.Controller;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.InitBinder;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.ModelAndView;
+
+import com.leonia.pms.dto.Agent;
+import com.leonia.pms.dto.BillingInstruction;
+import com.leonia.pms.dto.BookingType;
+import com.leonia.pms.dto.BusinessSource;
+import com.leonia.pms.dto.Country;
+import com.leonia.pms.dto.Reservation;
+import com.leonia.pms.dto.ReservationRoom;
+import com.leonia.pms.dto.Salutation;
+import com.leonia.pms.service.IAmendmentsService;
+import com.leonia.pms.serviceimpl.AmendmentSearchServiceImpl;
+@Controller
+public class AmendmentsController {
+
+	@Autowired
+	private IAmendmentsService dataService;
+	
+	@Autowired
+	private AmendmentSearchServiceImpl amendmentSearchServiceImpl;
+	@InitBinder
+	public void initBinder(WebDataBinder binder ) {
+		SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy");
+		binder.registerCustomEditor(Date.class, "arrivaldate", new CustomDateEditor(dateFormat, false));
+		binder.registerCustomEditor(Date.class, "departdate", new CustomDateEditor(dateFormat, false));
+	}
+	// AMENDMENTS IN CHANGE
+	//Ramu Change
+	@RequestMapping(value = "/amendments_home")
+	public String getreservation(@ModelAttribute("reservation") Reservation reservation){
+		//List<Reservation> userList=dataService.getReservation();
+		return "amendments_home";
+		
+}
+
+	
+	
+@RequestMapping(value = "/amendmentsreservations_home",method = RequestMethod.GET)
+public ModelAndView modifyReservation(@ModelAttribute Reservation registration,HttpServletRequest request, HttpServletResponse response){
+String val1=request.getParameter("val");
+	
+HttpSession session = request.getSession();       
+ServletContext context = session.getServletContext();
+
+@SuppressWarnings("unchecked")
+List<Country> countryList=(List<Country>)context.getAttribute("countryList");
+@SuppressWarnings("unchecked")
+List<BookingType> bookingtype=(List<BookingType>)context.getAttribute("bookingtype");
+@SuppressWarnings("unchecked")
+List<Salutation> salutation=(List<Salutation>)context.getAttribute("salutation");
+@SuppressWarnings("unchecked")
+List<BillingInstruction> billingInstruction=(List<BillingInstruction>)context.getAttribute("billingInstruction");
+@SuppressWarnings("unchecked")
+List<Agent> agent=(List<Agent>)context.getAttribute("agent");
+@SuppressWarnings("unchecked")
+List<BusinessSource> businessSource=(List<BusinessSource>)context.getAttribute("businessSource");
+
+Map<String,Object> dropbox=new HashMap<String,Object>();
+dropbox.put("countryList", countryList);
+dropbox.put("bookingtype", bookingtype);
+dropbox.put("salutation", salutation);
+dropbox.put("billingInstruction", billingInstruction);
+dropbox.put("agent", agent);
+dropbox.put("businessSource", businessSource);
+
+ 
+
+List<Reservation> userList=dataService.getChangeDetails(val1);
+
+dropbox.put("userList", userList);
+
+
+return new ModelAndView("amendmentsreservations_home","userList",dropbox);
+}
+
+
+ @RequestMapping(value = "/Reserve",method = RequestMethod.POST)
+   public ModelAndView Registration(HttpServletRequest request,HttpServletResponse response ,@ModelAttribute Reservation registration) {
+	String id= request.getParameter("profile");
+	dataService.updateReservation(registration,id);
+	return new ModelAndView("reservations_home");
+ 
+}
+ @RequestMapping(value = "/amendmentSearch")
+	public String getAmendmentsSearchResult(@ModelAttribute("reservation") @Valid Reservation reservation,BindingResult result,Map<String,Object> model) {
+		List<ReservationRoom> amendList = amendmentSearchServiceImpl.getAmendmentsSearchResult(reservation);
+		//PagedListHolder<Amendments> productList = new PagedListHolder<Amendments>(amendList);
+		//productList.setPageSize(1);
+		model.put("amendList", amendList);
+		model.put("reservation",reservation);
+		
+		//List<Amendments> pagedListLogo = productList.getPageList();
+		//model.put("pagedListLogo", pagedListLogo);
+		return "amendments_home";
+	}
+}
