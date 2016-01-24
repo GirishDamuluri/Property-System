@@ -1,0 +1,126 @@
+@@ -0,0 +1,125 @@
+package com.leonia.pms.daoimpl;
+
+import java.security.cert.CertPathValidatorException.Reason;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import com.leonia.pms.dao.IReservationDiscountsDAO;
+import com.leonia.pms.dto.Department;
+import com.leonia.pms.dto.IncomeHead;
+import com.leonia.pms.dto.ReservationRoom;
+import com.leonia.pms.dto.ReservationsDiscounts;
+
+@SuppressWarnings("all")
+@Repository
+public class ReservationDiscountDAOImpl implements IReservationDiscountsDAO {
+
+	@Autowired
+	private SessionFactory sessionFactory;
+
+	
+	// for displaying reservation room info pop up in reservation discounts
+	@Override
+	public List<ReservationRoom> getPopupReservationRoomInfo() {
+		List<ReservationRoom> reservationRoomList = sessionFactory.openSession().createQuery(" FROM Reservation ").list();
+		return reservationRoomList;
+		}
+	
+	@Override
+	public List<List<Object>> getPopupReservationRoomInfo(String resvid) {
+		// TODO Auto-generated method stub
+		List<List<Object>> reservationRoomList= new ArrayList<List<Object>>();
+		//List reservationRoomList = sessionFactory.openSession().createQuery(" FROM Reservation where reservation_id="+resvid).list();
+		@SuppressWarnings("unchecked")
+		List<Object> reservationRoomList1=sessionFactory.openSession().createQuery(" FROM Reservation where reservation_id="+resvid).list();
+		List<Object> applieddiscountsinfo=sessionFactory.openSession().createQuery(" FROM ReservationsDiscounts where reservation_id="+resvid).list();
+		
+		reservationRoomList.add(reservationRoomList1);
+		reservationRoomList.add(applieddiscountsinfo);
+		return reservationRoomList;
+	}
+	
+	@Override
+	public List<ReservationsDiscounts> getappliedDiscountsInfo(String resvid) {
+		List applieddiscountsinfo = sessionFactory.openSession().createQuery(" FROM ReservationsDiscounts where reservation_id="+resvid).list();
+		return applieddiscountsinfo;
+	}
+	
+	@Override
+	public  List<List<Object>> getReservationDiscounts(String resvid) {
+	 
+	List<List<Object>> returnMap= new ArrayList<List<Object>>();
+	Session session=sessionFactory.openSession();
+	Transaction tx=session.beginTransaction();
+	//int valint=Integer.parseInt(resvid);
+	 
+	@SuppressWarnings("unchecked")
+	List<Object> reservationRoomList=sessionFactory.openSession().createQuery(" FROM Reservation where reservation_id="+resvid).list();
+	List<Object> applieddiscountsinfo=sessionFactory.openSession().createQuery(" FROM ReservationsDiscounts where reservation_id="+resvid).list();
+	
+	returnMap.add(reservationRoomList);
+	returnMap.add(applieddiscountsinfo);
+	 
+	tx.commit();
+	session.close();
+	return returnMap;
+	}
+	
+	
+
+	@Override
+	public List<Department> getPopupDepartmentInfo() {
+		// TODO Auto-generated method stub
+		List departmentList = sessionFactory.openSession().createQuery(" FROM Department").list();
+		return departmentList;
+	}
+
+	@Override
+	public List<Reason> getPopupReasonInfo() {
+		// TODO Auto-generated method stub
+		List reasonList = sessionFactory.openSession().createQuery(" FROM Reason").list();
+		return reasonList;
+	}
+	
+	
+	@Override
+	public List<IncomeHead> getPopupIncomeheadInfo() {
+		// TODO Auto-generated method stub
+		List incomeheadList = sessionFactory.openSession().createQuery(" FROM IncomeHead").list();
+		return incomeheadList;
+	}
+
+/*	
+ * Future use for POS PopUp
+ * 
+*/	
+	/*@Override
+	public List<POS> getPopupPOSInfo() {
+		// TODO Auto-generated method stub
+		
+		List reasonList = sessionFactory.openSession().createQuery(" FROM POS").list();
+		
+		return reasonList;
+	}
+	*/
+	
+
+	@Override
+	public void savedesc(ReservationsDiscounts rd) {
+		// TODO Auto-generated method stub
+		Session session=sessionFactory.openSession();
+		Transaction tx=session.beginTransaction();
+		session.save(rd);
+		tx.commit();
+		session.close();
+		
+	}
+	
+	
+}
