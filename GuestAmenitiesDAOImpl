@@ -1,0 +1,185 @@
+@@ -0,0 +1,202 @@
+package com.leonia.pms.daoimpl;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.StringTokenizer;
+
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import com.leonia.pms.dao.IGuestAmenitiesListDAO;
+import com.leonia.pms.dto.Amenities;
+import com.leonia.pms.dto.GuestAmenitiesList;
+import com.leonia.pms.dto.Registration;
+import com.leonia.pms.dto.ReservationsDiscounts;
+import com.leonia.pms.dto.RoomType;
+
+@Repository
+public class GuestAmenitiesListDAOImpl implements IGuestAmenitiesListDAO {
+
+	@Autowired
+	private SessionFactory sessionFactory;
+	
+	// for displaying registration info pop up in guest Amenities
+		
+
+	@Override
+	public List<Registration> getPopupRegistrationInfo() {
+		// TODO Auto-generated method stub
+		List<Registration> registrationList = sessionFactory.openSession().createQuery(" FROM Registration ").list();
+		return registrationList;
+	}
+
+	@Override
+	public List<Amenities> getPopupAmenitiesInfo() {
+		// TODO Auto-generated method stub
+		List<Amenities> amenitiesList = sessionFactory.openSession().createQuery(" FROM Amenities ").list();
+		return amenitiesList;
+	}
+
+	@Override
+	public Map<Integer, Object> calculateAmenities(String selectedAmenities) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	@Override
+	public Map<String, List> checkedamenitiesList(String val, String val2) {
+		// TODO Auto-generated method stub
+	    int commas = 0;
+	   for(int k = 0; k < val.length(); k++) {
+	       if(val.charAt(k) == ',')
+		    	  commas++;	 			    
+		     }
+	   String[] selectedAmenities=new String[commas+1];
+	   StringTokenizer st = new StringTokenizer(val);  
+	         int x=0;
+	         while (st.hasMoreTokens()) {  
+        	 selectedAmenities[x]=st.nextToken(",");
+	         x++; 		
+	         }
+	    
+	             Session session=sessionFactory.openSession();
+				 Transaction tx=session.beginTransaction();
+     			 Map<String,List> mapamenities=new HashMap<String,List>();
+				 for(int i=0;i<selectedAmenities.length;i++){//get amenities details
+					 
+				 String query="select amenities_charge ,amount ,amenities_name from Amenities where amenities_name='"+selectedAmenities[i]+"'";
+				 
+				 List<Amenities> selectedAmenitiesList=session.createQuery(query).list();
+				 Iterator ie = selectedAmenitiesList.iterator();
+				 List list=new ArrayList();
+				 while(ie.hasNext()){
+					 Object amenitiesListObject[]=(Object[])ie.next();
+					 String ame_charge=(String)amenitiesListObject[0];
+					 String ame_amount=(String)amenitiesListObject[1];
+					 String amenities_name=(String)amenitiesListObject[2];
+					 String quenty="0";
+					 list.add(ame_charge);
+					 list.add(ame_amount);
+					 list.add(amenities_name);
+					 list.add(quenty);
+			         }	
+				    mapamenities.put(selectedAmenities[i], list);
+	}
+				 
+				 List<Registration> regList = sessionFactory.openSession().createQuery(" FROM Registration where registration_id='"+val2+"'").list();
+				
+				 mapamenities.put("reg", regList);
+				 
+				 tx.commit();
+				 session.close();
+				 return mapamenities;	
+		
+}
+	
+/*    @Override
+	public List<List<Object>> checkedamenitiesList(String val, String val2) {
+		// TODO Auto-generated method stub
+	    int commas = 0;
+	   for(int k = 0; k < val.length(); k++) {
+	       if(val.charAt(k) == ',')
+		    	  commas++;	 			    
+		     }
+	   String[] selectedAmenities=new String[commas+1];
+	   StringTokenizer st = new StringTokenizer(val);  
+	         int x=0;
+	         while (st.hasMoreTokens()) {  
+        	 selectedAmenities[x]=st.nextToken(",");
+	         x++; 		
+	         }
+	    
+	             Session session=sessionFactory.openSession();
+				 Transaction tx=session.beginTransaction();
+				 List<List<Object>> mapamenities=new ArrayList<List<Object>>();
+				 for(int i=0;i<selectedAmenities.length;i++){//get amenities details
+					 
+				 String query="select amenities_charge ,amount ,amenities_name from Amenities where amenities_name='"+selectedAmenities[i]+"'";
+				 
+				 
+				 
+				 @SuppressWarnings("unchecked")
+				 List<Amenities> selectedAmenitiesList=session.createQuery(query).list();
+				 
+				 
+				 Iterator ie = selectedAmenitiesList.iterator();
+				 List list=new ArrayList();
+				 while(ie.hasNext()){
+					 Object amenitiesListObject[]=(Object[])ie.next();
+					 String ame_charge=(String)amenitiesListObject[0];
+					 String ame_amount=(String)amenitiesListObject[1];
+					 String amenities_name=(String)amenitiesListObject[2];
+					 String quenty="0";
+					 list.add(ame_charge);
+					 list.add(ame_amount);
+					 list.add(amenities_name);
+					 list.add(quenty);
+			         }	
+				
+				 mapamenities.add(list);
+	}
+				 
+				 String query2 = "select guest_firstname,room_type_description,room_no from Registration where registration_id='"+val2+"'";
+				 List<Object> regList = session.createQuery(query2).list();
+				 mapamenities.add(regList);
+				 
+				 tx.commit();
+				 session.close();
+				 return mapamenities;	
+		
+}
+	*/
+	
+	@Override
+	public void saveguestamenitieslist(GuestAmenitiesList ge) {
+		// TODO Auto-generated method stub
+		Session session=sessionFactory.openSession();
+		Transaction tx=session.beginTransaction();
+		session.save(ge);
+		tx.commit();
+		session.close();
+		
+	}
+
+	
+	
+}
