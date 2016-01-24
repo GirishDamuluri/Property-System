@@ -1,0 +1,76 @@
+@@ -0,0 +1,75 @@
+package com.leonia.pms.daoimpl;
+
+import java.util.List;
+
+import org.hibernate.Criteria;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.criterion.MatchMode;
+import org.hibernate.criterion.Projection;
+import org.hibernate.criterion.Projections;
+import org.hibernate.criterion.Restrictions;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import com.leonia.pms.dao.ISpecialInstructionsDAO;
+import com.leonia.pms.dto.ExtraRequirementsDTO;
+import com.leonia.pms.dto.Reservation;
+import com.leonia.pms.dto.SpecialInstructionsDTO;
+@Repository
+public class SpecialInstructionsDAOImpl implements ISpecialInstructionsDAO {
+
+	@Autowired
+	private SessionFactory sessionFactory;
+	
+	@Override
+	public String getGuestName(String rId) {
+		Criteria crit = sessionFactory.openSession().createCriteria(Reservation.class);
+		crit.setProjection(Projections.projectionList().add(Projections.property("guest_firstname")).
+		add(Projections.property("guest_middlename")).
+		add(Projections.property("guest_lastname")));
+		crit.add(Restrictions.ilike("reservationStringId", rId,MatchMode.EXACT));
+		List resList = crit.list();
+		if(!resList.isEmpty()) {
+			Object[] obj = (Object[]) resList.get(0);
+			String name = (String) obj[0];
+			name += " "+(String)obj[1];
+			name += " "+(String)obj[2];
+			return name;
+		}
+		return null;
+		
+	}
+
+	@Override
+	public boolean saveExtraRequirement(SpecialInstructionsDTO specialInstructionsDTO) {
+		String resId = specialInstructionsDTO.getReservationId().substring(3);
+		specialInstructionsDTO.setReservationId(resId);
+		Session session = sessionFactory.openSession();
+		try {
+			session.beginTransaction();
+			session.save(specialInstructionsDTO);
+			session.getTransaction().commit();
+			return true;
+		}catch(Exception ex) {
+			ex.printStackTrace();
+		} finally {
+			session.close();
+		}
+		return false;
+	}
+
+	@Override
+	public Double getExtraRequirementCost(String extraRequirementName) {
+		Criteria crit = sessionFactory.openSession().createCriteria(ExtraRequirementsDTO.class);
+		crit.setProjection(Projections.property("extraRequirementCost"));
+		crit.add(Restrictions.ilike("extraRequirementName", extraRequirementName, MatchMode.EXACT));
+		List list = crit.list();
+		Double arr = (Double) list.get(0);
+		//Object cost = arr[0];
+		//String costStr = (String) cost;
+		
+		return arr;
+	}
+
+}
