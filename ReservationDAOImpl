@@ -1,0 +1,312 @@
+@@ -0,0 +1,311 @@
+package com.leonia.pms.daoimpl;
+
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import com.leonia.pms.dao.IReservationDAO;
+import com.leonia.pms.dto.GuestDetails;
+import com.leonia.pms.dto.PassportVisa;
+import com.leonia.pms.dto.PickupDrop;
+import com.leonia.pms.dto.Reservation;
+import com.leonia.pms.dto.ReservationAdvance;
+import com.leonia.pms.dto.ReservationRatesDetails;
+import com.leonia.pms.dto.ReservationRoom;
+import com.leonia.pms.dto.RoomMaster;
+import com.leonia.pms.dto.RoomType;
+
+@Repository
+public class ReservationDaoImpl implements IReservationDAO {
+	@Autowired
+	private SessionFactory sessionFactory;
+
+	@Override
+	public ArrayList<Object> saveReservation(Reservation reservation) {
+		ArrayList<Object> aList = new ArrayList<Object>();
+		Date d = new Date();
+		//String stayDates = reservation.getReservationRatesDetails().get(0).getStayingDates();
+		reservation.setBooking_date(d);
+		reservation.setBookingTime(d);
+		reservation.setRate_code_id("RR_CC_CB");
+		reservation.setUpdated_by("pavan");
+		reservation.setUpdated_date(d);
+		reservation.setUpdated_ip("192.36.45.787");
+		int temp = 0;
+		Session session = sessionFactory.openSession();
+		session.beginTransaction();
+		try {
+		List<GuestDetails> guestDetails = reservation.getGuestDetails();
+		//guestDetails.setReservation(reservation);
+		for(ReservationRoom reservationRoom : reservation.getReservationRoom()) {
+			reservationRoom.setReservation(reservation);
+			String noOfAdults = reservationRoom.getNum_adult();
+			String noOfChildren = reservationRoom.getNum_child();
+			int adultNum = 0;
+			int childrenNum = 0;
+			int totalNum = 0;
+			int iterator = 0;
+			if(noOfAdults != "") {
+				adultNum = Integer.parseInt(noOfAdults);
+				totalNum += adultNum;
+			}
+			if(noOfChildren != "") {
+				childrenNum = Integer.parseInt(noOfChildren);
+				totalNum+=childrenNum;
+			}
+			int adultCount = 0;
+			int childrenCount = 0;
+			if(totalNum != 0) {
+				
+				for(iterator = temp;iterator<totalNum;++iterator) {
+					GuestDetails guestDetailsMul = null;
+					if(guestDetails.size() > 1 ) {
+						guestDetailsMul = new GuestDetails();
+						
+						if(guestDetailsMul.getGuestFirstName() == null) {
+							guestDetailsMul.setGuestFirstName("Not Specified");
+							guestDetailsMul.setGuestMiddleName("Not Specified");
+							guestDetailsMul.setGuestLastName("Not Specified");
+						}
+					} else {
+						guestDetailsMul = guestDetails.get(iterator);
+					}
+					guestDetailsMul.setReservationRoom(reservationRoom);
+					guestDetailsMul.setRoomType(reservationRoom.getRoom_type_description());
+					for(int i=totalNum;i>0;) {
+						if(adultNum > adultCount) {
+							guestDetailsMul.setAdultOrChild("Adult");
+							++adultCount;
+							break;
+						}
+						if(childrenNum > childrenCount) {
+							guestDetailsMul.setAdultOrChild("Child");
+							++childrenCount;
+							break;
+						}
+					}
+					reservation.getGuestDetails().add(guestDetailsMul);
+					guestDetailsMul.setReservation(reservation);	
+					if(temp > 0) {
+						--temp;
+					}
+				}
+				PassportVisa passportVisa = reservation.getGuestDetails().get(0).getPassportVisa();
+				passportVisa.setGuestDetails(reservation.getGuestDetails().get(0));
+				
+				PickupDrop pickupDrop = reservation.getGuestDetails().get(0).getPickupDrop().get(0);
+				pickupDrop.setGuestDetails(reservation.getGuestDetails().get(0));
+			}
+
+			for(ReservationRatesDetails reservationRatesDetails : reservationRoom.getReservationRatesDetails()) {
+				reservationRatesDetails.setReservationRoom(reservationRoom);
+				reservationRatesDetails.setReservation(reservation);
+			}
+		}
+		
+		session.save(reservation);
+		reservation.setReservationStringId("RES"+reservation.getReservation_id());
+		session.getTransaction().commit();
+		
+		aList.add(reservation.getReservation_id());
+		aList.add(true);
+		return aList;
+		} catch(Exception ex) {
+			try {
+				ex.printStackTrace(new PrintWriter("Records Not Saved"));
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		aList.add(null);
+		aList.add(false);
+		return aList;
+	}
+
+	@SuppressWarnings("unused")
+	@Override
+	public List<Integer> getDates(String selecteddate)  {
+		String date1 = null;
+		ArrayList<Integer> list1 = new ArrayList<Integer>();
+		for (int i = 0; i <= 6; i++) {
+
+			SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy");
+			String dateInString = selecteddate;
+			Date date = new Date();
+			try {
+				date = sdf.parse(dateInString);
+			} catch (ParseException e) {
+				e.printStackTrace();
+			}
+
+			Calendar now = Calendar.getInstance();
+			now.setTime(date);
+			now.add(Calendar.DATE, i);
+			date1 = now.get(Calendar.YEAR) + "-" + (now.get(Calendar.MONTH) + 1) + "-" + now.get(Calendar.DATE);
+			list1.add(now.get(Calendar.DATE));
+		}
+		return list1;
+	}
+
+	// To obtain the room position values for the above obtained dates
+	@Override
+	public Map<String, Object> getRoomPosition(String selecteddate) {
+
+		Map<String, Object> roommap = new HashMap<String, Object>();
+
+		String room_type_id = null;
+		String date1 = null;
+		String room_type_description = null;
+		int physicalrooms = 0;
+		int blockedrooms = 0;
+		int inhouse = 0;
+		int ExpectedArrivals = 0;
+		int ExpectedDeparture = 0;
+		int roomposition = 0;
+		int crsblock = 0;
+		int releasedrooms = 0;
+		int deactiverooms = 0;
+		Session session = sessionFactory.openSession();
+		Transaction tx = session.beginTransaction();
+		// room_type_description
+		String query = "select room_type_id, room_type_description from RoomType";
+		List<RoomType> room_type = session.createQuery(query).list();
+		Iterator ie = room_type.iterator();
+		while (ie.hasNext()) {
+
+			ArrayList<Integer> roompositionlist = new ArrayList<Integer>();
+
+			Object room_type1[] = (Object[]) ie.next();
+
+			room_type_id = (String) room_type1[0];
+			room_type_description = (String) room_type1[1];
+
+			String physicalroomsquery = "select count(*) from RoomMaster where room_type_id='" + room_type_id + "'";
+
+			physicalrooms = ((Long) session.createQuery(physicalroomsquery).uniqueResult()).intValue();
+
+			for (int i = 0; i <= 6; i++) {
+
+				SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy");
+				String dateInString = selecteddate;
+				Date date = new Date();
+				try {
+					date = sdf.parse(dateInString);
+				} catch (ParseException e) {
+					e.printStackTrace();
+				}
+
+				Calendar now = Calendar.getInstance();
+				now.setTime(date);
+				now.add(Calendar.DATE, i);
+				date1 = now.get(Calendar.YEAR) + "-" + (now.get(Calendar.MONTH) + 1) + "-" + now.get(Calendar.DATE);
+				String blockedroomsquery = "select count(*) from BlockedRooms where '" + date1
+						+ "' between block_start_date AND block_end_date AND room_type_id='" + room_type_id + "'";
+
+				blockedrooms = ((Long) session.createQuery(blockedroomsquery).uniqueResult()).intValue();
+
+				releasedrooms = physicalrooms - blockedrooms - deactiverooms;
+
+				String inhousequery = "SELECT count(*) from OccupiedRooms where '" + date1
+						+ "' between arrivaldate AND departdate AND room_type_id='" + room_type_id + "'";
+
+				inhouse = ((Long) session.createQuery(inhousequery).uniqueResult()).intValue();
+
+				String ExpectedArrivalsquery = "SELECT count(*) from Reservation where arrivaldate='" + date1
+						+ "' AND room_type_description='" + room_type_description + "'";
+				ExpectedArrivals = ((Long) session.createQuery(ExpectedArrivalsquery).uniqueResult()).intValue();
+
+				String ExpectedDeparturequery = "SELECT count(*) from OccupiedRooms where departdate='" + date1
+						+ "' AND room_type_id='" + room_type_id + "'";
+				ExpectedDeparture = ((Long) session.createQuery(ExpectedDeparturequery).uniqueResult()).intValue();
+				roomposition = releasedrooms - inhouse - ExpectedArrivals + ExpectedDeparture - crsblock;
+				roompositionlist.add(roomposition);
+			}
+
+			roommap.put(room_type_description, roompositionlist);
+
+		}
+
+		tx.commit();
+		session.close();
+		return roommap;
+	}
+
+	@Override
+	public void saveReservationList(List<Reservation> reservationList) {
+		
+		//for(Reservation reservation : reservationList) {
+		Reservation reservation = reservationList.get(0);
+			GuestDetails details = reservation.getGuestDetails().get(0);
+			details.setReservation(reservation);
+			Date d = new Date();
+			reservation.setBooking_date(d);
+			reservation.setRate_code_id("RR_CC_CB");
+			reservation.setUpdated_by("pavan");
+			reservation.setUpdated_date(d);
+			reservation.setUpdated_ip("192.36.45.787");
+			Session session = sessionFactory.openSession();
+			session.beginTransaction();
+			session.save(reservation);
+			session.getTransaction().commit();
+		//}
+		
+		/*Reservation reservation = reservationList.get(0);
+		GuestDetails details = reservation.getGuestDetails().get(0);
+		details.setReservation(reservation);
+			Date d = new Date();
+			reservation.setBooking_date(d);
+			reservation.setRate_code_id("RR_CC_CB");
+			reservation.setUpdated_by("pavan");
+			reservation.setUpdated_date(d);
+			reservation.setUpdated_ip("192.36.45.787");
+			Session session = sessionFactory.openSession();
+			session.beginTransaction();
+			session.save(reservation);
+			session.getTransaction().commit();*/
+		
+	}
+	
+
+	@Override
+	public void saveReservationAdvancePay(String id, ReservationAdvance resAdvance) {
+        
+		Session session = sessionFactory.openSession();
+		session.beginTransaction();
+		session.save(resAdvance);
+		session.getTransaction().commit();
+	}
+	@Override
+	public List<RoomMaster> getRoomNo(String room_type_description) {
+			Session session=sessionFactory.openSession();
+			Transaction tx=session.beginTransaction();
+			String room_type_id = "";
+			String query="select room_type_id from RoomType where room_type_description='"+room_type_description+"'";
+			List<RoomType> room_type=session.createQuery(query).list();
+				Iterator ie = room_type.iterator();
+			    while(ie.hasNext()){
+		            Object room_type1=(Object)ie.next();
+		          	room_type_id=(String)room_type1;
+			    }
+			List<RoomMaster> rooms=session.createQuery("from RoomMaster where room_type_id='"+room_type_id+"'").list();
+			tx.commit();
+	        session.close();	
+		return rooms;
+	}
+
+}
